@@ -3,11 +3,42 @@ package wopo_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/DmitySH/wopo"
 	"github.com/stretchr/testify/require"
 )
+
+func ExamplePool() {
+	h := func(ctx context.Context, x int) (int, error) {
+		return x * x, nil
+	}
+	p := wopo.NewPool(
+		h,
+		wopo.WithWorkerCount[int, int](1),
+		wopo.WithResultBufferSize[int, int](3),
+		wopo.WithResultBufferSize[int, int](3),
+	)
+
+	p.Start()
+
+	ctx := context.Background()
+	go func() {
+		for i := 0; i < 3; i++ {
+			p.PushTask(ctx, i)
+		}
+		p.Stop()
+	}()
+
+	for res := range p.Results() {
+		fmt.Println(res.Data, res.Err)
+	}
+	// Output:
+	// 0 <nil>
+	// 1 <nil>
+	// 4 <nil>
+}
 
 type behavior string
 
