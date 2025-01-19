@@ -17,8 +17,8 @@ type Handler[T, V any] func(ctx context.Context, in T) (out V, err error)
 
 // task data and context for the task passed to the Handler
 type task[T any] struct {
-	Ctx  context.Context
-	Data T
+	ctx  context.Context
+	data T
 }
 
 // Result result data and error after Handler execution.
@@ -37,7 +37,6 @@ type Pool[T, V any] struct {
 	outCh chan Result[V]
 
 	stopWg sync.WaitGroup
-	stopCh chan struct{}
 }
 
 // NewPool creates a pool structure for workers with a handler,
@@ -84,7 +83,7 @@ func (p *Pool[T, V]) Stop() {
 // The call is blocked if the input buffer is completely full.
 // You MUST NOT use this method after calling the Stop method.
 func (p *Pool[T, V]) PushTask(ctx context.Context, taskData T) {
-	p.inCh <- task[T]{Ctx: ctx, Data: taskData}
+	p.inCh <- task[T]{ctx: ctx, data: taskData}
 }
 
 func (p *Pool[T, V]) workLoop() {
@@ -95,12 +94,6 @@ func (p *Pool[T, V]) workLoop() {
 	}
 }
 
-// Results the channel in which the result of the task processing is recorded.
-// Closes after the pool is completely stopped
-func (p *Pool[T, V]) Results() <-chan Result[V] {
-	return p.outCh
-}
-
 func (p *Pool[T, V]) handle(task task[T]) (res Result[V]) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -109,6 +102,12 @@ func (p *Pool[T, V]) handle(task task[T]) (res Result[V]) {
 		}
 	}()
 
-	resData, err := p.handler(task.Ctx, task.Data)
+	resData, err := p.handler(task.ctx, task.data)
 	return Result[V]{Data: resData, Err: err}
+}
+
+// Results the channel in which the result of the task processing is recorded.
+// Closes after the pool is completely stopped
+func (p *Pool[T, V]) Results() <-chan Result[V] {
+	return p.outCh
 }
