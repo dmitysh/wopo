@@ -43,11 +43,11 @@ type Pool[T, V any] struct {
 // NewPool creates a pool structure for workers with a handler,
 // but does not launch the workers themselves. Parameterized via PoolOption:
 //
-// WithWorkerCount sets the number of workers. Default is 3
+// WithWorkerCount sets the number of workers. Panics if n <= 0. Default is 3
 //
 // WithTaskBufferSize sets the buffer size of the input channel. Default is 0
 //
-// WithTaskBufferSize sets the buffer size of the input channel. Default is 0
+// WithResultBufferSize sets the buffer size of the output channel. Default is 0
 func NewPool[T, V any](handler Handler[T, V], opts ...PoolOption[T, V]) *Pool[T, V] {
 	p := &Pool[T, V]{
 		handler:     handler,
