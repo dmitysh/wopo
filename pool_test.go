@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync/atomic"
 	"testing"
 
 	"github.com/DmitySH/wopo"
@@ -48,7 +49,18 @@ const (
 	panica  = behavior("panic")
 )
 
-func handler(_ context.Context, beh behavior) (int, error) {
+type incHandler struct {
+	i atomic.Int32
+}
+
+//
+//func newIncHandler() incHandler {
+//	return incHandler{i: atomic.}
+//}
+
+func (h *incHandler) handle(_ context.Context, beh behavior) (int, error) {
+	h.i.Add(1)
+
 	switch beh {
 	case success:
 		return 5, nil
@@ -64,7 +76,8 @@ func handler(_ context.Context, beh behavior) (int, error) {
 func TestDefaultPool(t *testing.T) {
 	t.Parallel()
 
-	p := wopo.NewPool(handler)
+	h := incHandler{}
+	p := wopo.NewPool(h.handle)
 	ctx := context.Background()
 
 	p.Start()
@@ -105,7 +118,8 @@ func TestDefaultPool(t *testing.T) {
 func TestBufferedPool(t *testing.T) {
 	t.Parallel()
 
-	p := wopo.NewPool(handler,
+	h := incHandler{}
+	p := wopo.NewPool(h.handle,
 		wopo.WithTaskBufferSize[behavior, int](1),
 		wopo.WithResultBufferSize[behavior, int](1),
 	)
@@ -127,4 +141,26 @@ func TestBufferedPool(t *testing.T) {
 
 	p.Stop()
 	<-p.Results()
+}
+
+func TestNoResultsPool(t *testing.T) {
+	t.Parallel()
+
+	h := incHandler{}
+	p := wopo.NewPool(h.handle,
+		wopo.WithTaskBufferSize[behavior, int](1),
+		wopo.WithResultBufferSize[behavior, int](-1),
+	)
+	ctx := context.Background()
+
+	resCh := p.Results()
+	<-resCh
+
+	p.PushTask(ctx, success)
+	p.Start()
+
+	p.Stop()
+	<-p.Results()
+
+	require.Equal(t, int32(1), h.i.Load())
 }

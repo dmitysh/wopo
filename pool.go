@@ -21,7 +21,7 @@ type task[T any] struct {
 	data T
 }
 
-// Result result data and error after Handler execution.
+// Result consists of result data and error after Handler execution.
 // Panics that occur in the Handler turn into an error ErrRecoveredFromPanic
 type Result[V any] struct {
 	Err  error
@@ -37,6 +37,8 @@ type Pool[T, V any] struct {
 	outCh chan Result[V]
 
 	stopWg sync.WaitGroup
+
+	noResults bool
 }
 
 // NewPool creates a pool structure for workers with a handler,
@@ -76,7 +78,10 @@ func (p *Pool[T, V]) Start() {
 func (p *Pool[T, V]) Stop() {
 	close(p.inCh)
 	p.stopWg.Wait()
-	close(p.outCh)
+
+	if !p.noResults {
+		close(p.outCh)
+	}
 }
 
 // PushTask puts the task in the local queue for processing by the pool.
@@ -90,7 +95,11 @@ func (p *Pool[T, V]) workLoop() {
 	defer p.stopWg.Done()
 
 	for t := range p.inCh {
-		p.outCh <- p.handle(t)
+		if p.noResults {
+			_ = p.handle(t)
+		} else {
+			p.outCh <- p.handle(t)
+		}
 	}
 }
 
@@ -107,7 +116,7 @@ func (p *Pool[T, V]) handle(task task[T]) (res Result[V]) {
 }
 
 // Results the channel in which the result of the task processing is recorded.
-// Closes after the pool is completely stopped
+// Closes after the pool is completely stopped or when the WithResultBufferSize option is used
 func (p *Pool[T, V]) Results() <-chan Result[V] {
 	return p.outCh
 }
