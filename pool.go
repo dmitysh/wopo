@@ -105,6 +105,11 @@ func (p *Pool[T, V]) workLoop() {
 
 func (p *Pool[T, V]) handle(task task[T]) (res Result[V]) {
 	defer func() {
+		// Do not handle panics without result channel
+		// This is the only way to signal abouts panics in that case
+		if p.noResults {
+			return
+		}
 		if r := recover(); r != nil {
 			res = Result[V]{Err: fmt.Errorf("%w: %s", ErrRecoveredFromPanic, string(debug.Stack()))}
 			return
