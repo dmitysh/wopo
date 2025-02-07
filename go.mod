@@ -1,4 +1,4 @@
-module github.com/DmitySH/wopo
+module github.com/dmitysh/wopo
 
 go 1.23.4
 

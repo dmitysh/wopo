@@ -2,7 +2,7 @@
 
 
 ```sh
-go get github.com/DmitySH/wopo
+go get github.com/dmitysh/wopo
 ```
 
 * Simplicity
