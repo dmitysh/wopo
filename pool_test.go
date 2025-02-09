@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/DmitySH/wopo"
+	"github.com/dmitysh/wopo"
 	"github.com/stretchr/testify/require"
 )
 
